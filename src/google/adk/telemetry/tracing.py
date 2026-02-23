@@ -147,6 +147,7 @@ def trace_agent_invocation(
 
   span.set_attribute(GEN_AI_AGENT_NAME, agent.name)
   span.set_attribute(GEN_AI_CONVERSATION_ID, ctx.session.id)
+  span.set_attribute(USER_ID, ctx.session.user_id)
 
 
 def trace_tool_call(
