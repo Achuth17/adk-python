@@ -1422,6 +1422,33 @@ async def test_get_session_config_limits_events():
   )
   assert len(limited_session.events) == 3
 
+async def test_run_async_emits_invocation_span_with_user_id():
+  from unittest import mock
+  session_service = InMemorySessionService()
+  runner = Runner(
+      app_name=TEST_APP_ID,
+      agent=MockLlmAgent("test_agent"),
+      session_service=session_service,
+  )
+  await session_service.create_session(
+      app_name=TEST_APP_ID, user_id="test_user_id_123", session_id=TEST_SESSION_ID
+  )
+
+  with mock.patch("google.adk.runners.tracer") as mock_tracer:
+    mock_span = mock.MagicMock()
+    mock_tracer.start_as_current_span.return_value.__enter__.return_value = mock_span
+    
+    async for _ in runner.run_async(
+        user_id="test_user_id_123",
+        session_id=TEST_SESSION_ID,
+        new_message=types.Content(role="user", parts=[types.Part.from_text("hello")]),
+    ):
+      pass
+
+    mock_tracer.start_as_current_span.assert_called_once_with('invocation')
+    from opentelemetry.semconv._incubating.attributes.user_attributes import USER_ID
+    mock_span.set_attribute.assert_called_once_with(USER_ID, "test_user_id_123")
+
 
 if __name__ == "__main__":
   pytest.main([__file__])
