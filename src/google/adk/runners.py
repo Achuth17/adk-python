@@ -533,7 +533,9 @@ class Runner:
         new_message: Optional[types.Content] = None,
         invocation_id: Optional[str] = None,
     ) -> AsyncGenerator[Event, None]:
-      with tracer.start_as_current_span('invocation'):
+      with tracer.start_as_current_span('invocation') as span:
+        from opentelemetry.semconv._incubating.attributes.user_attributes import USER_ID
+        span.set_attribute(USER_ID, user_id)
         session = await self._get_or_create_session(
             user_id=user_id, session_id=session_id
         )
