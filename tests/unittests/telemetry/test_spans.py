@@ -116,7 +116,6 @@ async def test_trace_agent_invocation(mock_span_fixture):
       ),
       mock.call(USER_ID, invocation_context.session.user_id),
   ]
-  ]
   mock_span_fixture.set_attribute.assert_has_calls(
       expected_calls, any_order=True
   )
