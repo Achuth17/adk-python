@@ -420,6 +420,7 @@ class UsageMetadataChunk(BaseModel):
   completion_tokens: int
   total_tokens: int
   cached_prompt_tokens: int = 0
+  reasoning_tokens: int = 0
 
 
 class LiteLLMClient:
@@ -1384,6 +1385,9 @@ def _model_response_to_chunk(
           completion_tokens=usage.get("completion_tokens", 0) or 0,
           total_tokens=usage.get("total_tokens", 0) or 0,
           cached_prompt_tokens=_extract_cached_prompt_tokens(usage),
+          reasoning_tokens=(usage.get("completion_tokens_details") or {}).get(
+              "reasoning_tokens", 0
+          ) or 0,
       ), None
     except AttributeError as e:
       raise TypeError(
@@ -1433,13 +1437,18 @@ def _model_response_to_generate_content_response(
           finish_reason_str, types.FinishReason.OTHER
       )
   if response.get("usage", None):
+    usage_dict = response["usage"]
+    reasoning_tokens = (usage_dict.get("completion_tokens_details") or {}).get(
+        "reasoning_tokens", 0
+    ) or 0
     llm_response.usage_metadata = types.GenerateContentResponseUsageMetadata(
-        prompt_token_count=response["usage"].get("prompt_tokens", 0),
-        candidates_token_count=response["usage"].get("completion_tokens", 0),
-        total_token_count=response["usage"].get("total_tokens", 0),
+        prompt_token_count=usage_dict.get("prompt_tokens", 0),
+        candidates_token_count=usage_dict.get("completion_tokens", 0),
+        total_token_count=usage_dict.get("total_tokens", 0),
         cached_content_token_count=_extract_cached_prompt_tokens(
-            response["usage"]
+            usage_dict
         ),
+        thoughts_token_count=reasoning_tokens if reasoning_tokens else None,
     )
   return llm_response
 
@@ -2084,6 +2093,9 @@ class LiteLlm(BaseLlm):
                 candidates_token_count=chunk.completion_tokens,
                 total_token_count=chunk.total_tokens,
                 cached_content_token_count=chunk.cached_prompt_tokens,
+                thoughts_token_count=chunk.reasoning_tokens
+                if chunk.reasoning_tokens
+                else None,
             )
 
           # LiteLLM 1.81+ can set finish_reason="stop" on partial chunks. Only
