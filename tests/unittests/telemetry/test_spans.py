@@ -169,6 +169,7 @@ async def test_trace_call_llm(monkeypatch, mock_span_fixture):
       config=types.GenerateContentConfig(
           top_p=0.95,
           max_output_tokens=1024,
+          thinking_config=types.ThinkingConfig(thinking_budget=10),
       ),
   )
   llm_response = LlmResponse(
@@ -178,8 +179,14 @@ async def test_trace_call_llm(monkeypatch, mock_span_fixture):
           total_token_count=100,
           prompt_token_count=50,
           candidates_token_count=50,
+          thoughts_token_count=10,
       ),
   )
+  try:
+    llm_response.usage_metadata.system_instruction_tokens = 5
+  except Exception:
+    pass  # Pydantic might restrict dynamic assignments depending on version/config
+
   trace_call_llm(invocation_context, 'test_event_id', llm_request, llm_response)
 
   expected_calls = [
@@ -189,9 +196,14 @@ async def test_trace_call_llm(monkeypatch, mock_span_fixture):
       mock.call('gcp.vertex.agent.llm_response', mock.ANY),
       mock.call('gen_ai.usage.input_tokens', 50),
       mock.call('gen_ai.usage.output_tokens', 50),
+      mock.call('gen_ai.usage.reasoning_tokens_limit', 10),
+      mock.call('gen_ai.usage.reasoning_tokens', 10),
       mock.call('gen_ai.response.finish_reasons', ['stop']),
   ]
-  assert mock_span_fixture.set_attribute.call_count == 12
+  if hasattr(llm_response.usage_metadata, 'system_instruction_tokens'):
+    expected_calls.append(mock.call('gen_ai.usage.system_instruction_tokens', 5))
+  
+  assert mock_span_fixture.set_attribute.call_count == len(expected_calls) + 5
   mock_span_fixture.set_attribute.assert_has_calls(
       expected_calls, any_order=True
   )

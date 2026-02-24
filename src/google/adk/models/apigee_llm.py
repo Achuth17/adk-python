@@ -805,10 +805,14 @@ class CompletionsHTTPClient:
       parts.append(part)
 
     usage = response.get('usage', {})
+    reasoning_tokens = (
+        usage.get('completion_tokens_details', {}) or {}
+    ).get('reasoning_tokens', 0) or 0
     usage_metadata = types.GenerateContentResponseUsageMetadata(
         prompt_token_count=usage.get('prompt_tokens', 0),
         candidates_token_count=usage.get('completion_tokens', 0),
         total_token_count=usage.get('total_tokens', 0),
+        thoughts_token_count=reasoning_tokens if reasoning_tokens else None,
     )
 
     logprobs_result = self._parse_logprobs(choice.get('logprobs'))
