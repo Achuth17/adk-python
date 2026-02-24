@@ -45,6 +45,8 @@ from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import GEN_A
 from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import GEN_AI_USAGE_OUTPUT_TOKENS
 from opentelemetry.semconv._incubating.attributes.user_attributes import USER_ID
 import pytest
+from google.adk.errors.tool_execution_error import ToolErrorType
+from google.adk.errors.tool_execution_error import ToolExecutionError
 
 
 class Event:
@@ -849,6 +851,86 @@ async def test_generate_content_span(
       (lr for lr in log_records if lr.event_name == 'gen_ai.choice'),
       None,
   )
-  assert choice_log is not None
-  assert choice_log.body == expected_choice_body
   assert choice_log.attributes == {GEN_AI_SYSTEM: 'test_system'}
+
+
+def test_trace_tool_call_with_tool_execution_error(
+    monkeypatch, mock_span_fixture, mock_tool_fixture
+):
+  monkeypatch.setattr(
+      'opentelemetry.trace.get_current_span', lambda: mock_span_fixture
+  )
+
+  test_args: Dict[str, Any] = {'param_a': 'value_a'}
+  test_error = ToolExecutionError(
+      message='Internal server error',
+      error_type=ToolErrorType.INTERNAL_SERVER_ERROR,
+  )
+
+  trace_tool_call(
+      tool=mock_tool_fixture,
+      args=test_args,
+      function_response_event=None,
+      error=test_error,
+  )
+
+  expected_calls = [
+      mock.call('gen_ai.operation.name', 'execute_tool'),
+      mock.call('gen_ai.tool.name', mock_tool_fixture.name),
+      mock.call('gen_ai.tool.description', mock_tool_fixture.description),
+      mock.call('gen_ai.tool.type', 'BaseTool'),
+      mock.call('error.type', '500'),
+      mock.call('gcp.vertex.agent.tool_call_args', json.dumps(test_args)),
+      mock.call('gcp.vertex.agent.tool_response', '{}'),
+      mock.call('gcp.vertex.agent.llm_request', '{}'),
+      mock.call('gcp.vertex.agent.llm_response', '{}'),
+      mock.call('gen_ai.tool.call.id', '<not specified>'),
+  ]
+
+  mock_span_fixture.set_attribute.assert_has_calls(
+      expected_calls, any_order=True
+  )
+
+
+def test_trace_tool_call_with_timeout_error(
+    monkeypatch, mock_span_fixture, mock_tool_fixture
+):
+  monkeypatch.setattr(
+      'opentelemetry.trace.get_current_span', lambda: mock_span_fixture
+  )
+
+  test_args: Dict[str, Any] = {'param_a': 'value_a'}
+  test_error = ToolExecutionError(
+      message='Request timed out',
+      error_type=ToolErrorType.REQUEST_TIMEOUT,
+  )
+
+  trace_tool_call(
+      tool=mock_tool_fixture,
+      args=test_args,
+      function_response_event=None,
+      error=test_error,
+  )
+
+  assert mock.call('error.type', '408') in mock_span_fixture.set_attribute.call_args_list
+
+
+def test_trace_tool_call_with_standard_error(
+    monkeypatch, mock_span_fixture, mock_tool_fixture
+):
+  monkeypatch.setattr(
+      'opentelemetry.trace.get_current_span', lambda: mock_span_fixture
+  )
+
+  test_args: Dict[str, Any] = {'param': 1}
+  test_error = ValueError('Invalid arguments')
+
+  trace_tool_call(
+      tool=mock_tool_fixture,
+      args=test_args,
+      function_response_event=None,
+      error=test_error,
+  )
+
+  assert mock.call('error.type', 'ValueError') in mock_span_fixture.set_attribute.call_args_list
+

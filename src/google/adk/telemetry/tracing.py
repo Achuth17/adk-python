@@ -38,6 +38,7 @@ from opentelemetry import _logs
 from opentelemetry import context as otel_context
 from opentelemetry import trace
 from opentelemetry._logs import LogRecord
+from opentelemetry.semconv._incubating.attributes.error_attributes import ERROR_TYPE
 from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import GEN_AI_AGENT_DESCRIPTION
 from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import GEN_AI_AGENT_NAME
 from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import GEN_AI_CONVERSATION_ID
@@ -158,6 +159,7 @@ def trace_tool_call(
     tool: BaseTool,
     args: dict[str, Any],
     function_response_event: Event | None,
+    error: Exception | None = None,
 ):
   """Traces tool call.
 
@@ -165,6 +167,7 @@ def trace_tool_call(
     tool: The tool that was called.
     args: The arguments to the tool call.
     function_response_event: The event with the function response details.
+    error: The exception raised during tool execution, if any.
   """
   span = trace.get_current_span()
 
@@ -175,6 +178,12 @@ def trace_tool_call(
 
   # e.g. FunctionTool
   span.set_attribute(GEN_AI_TOOL_TYPE, tool.__class__.__name__)
+
+  if error is not None:
+    if hasattr(error, 'error_type') and error.error_type is not None:
+      span.set_attribute(ERROR_TYPE, str(error.error_type))
+    else:
+      span.set_attribute(ERROR_TYPE, type(error).__name__)
 
   # Setting empty llm request and response (as UI expect these) while not
   # applicable for tool_response.
