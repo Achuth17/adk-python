@@ -318,7 +318,7 @@ class RunConfig(BaseModel):
     - Less than or equal to 0: This allows for unbounded number of llm calls.
   """
 
-  custom_metadata: Optional[dict[str, Any]] = None
+  custom_metadata: Optional[dict[str, str]] = None
   """Custom metadata for the current invocation."""
 
   get_session_config: Optional[GetSessionConfig] = None

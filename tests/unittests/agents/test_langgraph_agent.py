@@ -238,6 +238,7 @@ async def test_langgraph_agent(
   mock_parent_context.invocation_id = "test_invocation_id"
   mock_parent_context.model_copy.return_value = mock_parent_context
   mock_parent_context.plugin_manager = PluginManager(plugins=[])
+  mock_parent_context.run_config = None  # Fix AttributeError in tracing
 
   weather_agent = LangGraphAgent(
       name="weather_agent",
