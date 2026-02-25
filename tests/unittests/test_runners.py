@@ -1267,5 +1267,40 @@ async def test_run_async_emits_invocation_span_with_user_id():
     mock_span.set_attribute.assert_called_once_with(USER_ID, "test_user_id_123")
 
 
+@pytest.mark.asyncio
+async def test_run_async_emits_invocation_span_with_custom_metadata():
+  from unittest import mock
+  session_service = InMemorySessionService()
+  runner = Runner(
+      app_name=TEST_APP_ID,
+      agent=MockLlmAgent("test_agent"),
+      session_service=session_service,
+  )
+  await session_service.create_session(
+      app_name=TEST_APP_ID, user_id="test_user_id_123", session_id=TEST_SESSION_ID
+  )
+
+  run_config = RunConfig(custom_metadata={"is_simulated_abuse": "true"})
+
+  with mock.patch("google.adk.runners.tracer") as mock_tracer:
+    mock_span = mock.MagicMock()
+    mock_tracer.start_as_current_span.return_value.__enter__.return_value = mock_span
+    
+    async for _ in runner.run_async(
+        user_id="test_user_id_123",
+        session_id=TEST_SESSION_ID,
+        new_message=types.Content(role="user", parts=[types.Part.from_text("hello")]),
+        run_config=run_config,
+    ):
+      pass
+
+    mock_tracer.start_as_current_span.assert_called_once_with('invocation')
+    from opentelemetry.semconv._incubating.attributes.user_attributes import USER_ID
+    mock_span.set_attribute.assert_has_calls([
+        mock.call(USER_ID, "test_user_id_123"),
+        mock.call("is_simulated_abuse", "true"),
+    ], any_order=True)
+
+
 if __name__ == "__main__":
   pytest.main([__file__])

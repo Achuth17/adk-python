@@ -151,6 +151,36 @@ async def test_trace_agent_invocation_with_version(mock_span_fixture):
 
 
 @pytest.mark.asyncio
+async def test_trace_agent_invocation_with_custom_metadata(mock_span_fixture):
+  """Test trace_agent_invocation sets custom metadata attributes correctly."""
+  from google.adk.agents.run_config import RunConfig
+  agent = LlmAgent(name='test_llm_agent', model='gemini-pro')
+  agent.description = 'Test agent description'
+  invocation_context = await _create_invocation_context(agent)
+  invocation_context.run_config = RunConfig(custom_metadata={"is_simulated_abuse": "true", "x-request-id": "req-1"})
+
+  trace_agent_invocation(mock_span_fixture, agent, invocation_context)
+
+  expected_calls = [
+      mock.call('gen_ai.operation.name', 'invoke_agent'),
+      mock.call('gen_ai.agent.description', agent.description),
+      mock.call('gen_ai.agent.name', agent.name),
+      mock.call(GEN_AI_AGENT_VERSION, ''),
+      mock.call(
+          'gen_ai.conversation.id',
+          invocation_context.session.id,
+      ),
+      mock.call(USER_ID, invocation_context.session.user_id),
+      mock.call("is_simulated_abuse", "true"),
+      mock.call("x-request-id", "req-1"),
+  ]
+  mock_span_fixture.set_attribute.assert_has_calls(
+      expected_calls, any_order=True
+  )
+  assert mock_span_fixture.set_attribute.call_count == len(expected_calls)
+
+
+@pytest.mark.asyncio
 async def test_trace_call_llm(monkeypatch, mock_span_fixture):
   """Test trace_call_llm sets all telemetry attributes correctly with normal content."""
   monkeypatch.setattr(

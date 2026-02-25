@@ -496,6 +496,9 @@ class Runner:
       with tracer.start_as_current_span('invocation') as span:
         from opentelemetry.semconv._incubating.attributes.user_attributes import USER_ID
         span.set_attribute(USER_ID, user_id)
+        if run_config.custom_metadata:
+          for k, v in run_config.custom_metadata.items():
+            span.set_attribute(k, v)
         session = await self._get_or_create_session(
             user_id=user_id, session_id=session_id
         )

@@ -208,6 +208,7 @@ class RunAgentRequest(common.BaseModel):
   new_message: Optional[types.Content] = None
   streaming: bool = False
   state_delta: Optional[dict[str, Any]] = None
+  custom_metadata: Optional[dict[str, str]] = None
   # for resume long-running functions
   invocation_id: Optional[str] = None
 
@@ -1567,6 +1568,7 @@ class AdkWebServer:
                 session_id=req.session_id,
                 new_message=req.new_message,
                 state_delta=req.state_delta,
+                run_config=RunConfig(custom_metadata=req.custom_metadata),
                 invocation_id=req.invocation_id,
             )
         ) as agen:
@@ -1586,7 +1588,10 @@ class AdkWebServer:
           session_id=req.session_id,
           new_message=req.new_message,
           state_delta=req.state_delta,
-          run_config=RunConfig(streaming_mode=stream_mode),
+          run_config=RunConfig(
+              streaming_mode=stream_mode,
+              custom_metadata=req.custom_metadata,
+          ),
           invocation_id=req.invocation_id,
       )
 
