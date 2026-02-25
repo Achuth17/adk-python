@@ -1258,7 +1258,7 @@ async def test_run_async_emits_invocation_span_with_user_id():
     async for _ in runner.run_async(
         user_id="test_user_id_123",
         session_id=TEST_SESSION_ID,
-        new_message=types.Content(role="user", parts=[types.Part.from_text("hello")]),
+        new_message=types.Content(role="user", parts=[types.Part(text="hello")]),
     ):
       pass
 
@@ -1289,7 +1289,7 @@ async def test_run_async_emits_invocation_span_with_custom_metadata():
     async for _ in runner.run_async(
         user_id="test_user_id_123",
         session_id=TEST_SESSION_ID,
-        new_message=types.Content(role="user", parts=[types.Part.from_text("hello")]),
+        new_message=types.Content(role="user", parts=[types.Part(text="hello")]),
         run_config=run_config,
     ):
       pass
