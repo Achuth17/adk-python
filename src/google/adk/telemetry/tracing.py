@@ -151,6 +151,10 @@ def trace_agent_invocation(
   span.set_attribute(GEN_AI_AGENT_NAME, agent.name)
   span.set_attribute(GEN_AI_CONVERSATION_ID, ctx.session.id)
 
+  if ctx.run_config and ctx.run_config.custom_metadata:
+    for k, v in ctx.run_config.custom_metadata.items():
+      span.set_attribute(k, v)
+
 
 def trace_tool_call(
     tool: BaseTool,

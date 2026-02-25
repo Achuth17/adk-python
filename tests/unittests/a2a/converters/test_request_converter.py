@@ -170,7 +170,7 @@ class TestConvertA2aRequestToAgentRunRequest:
     assert result.new_message.parts == [mock_genai_part1, mock_genai_part2]
     assert isinstance(result.run_config, RunConfig)
     assert result.run_config.custom_metadata == {
-        "a2a_metadata": {"test_key": "test_value"}
+        "a2a_metadata_test_key": "test_value"
     }
 
     # Verify calls
@@ -222,7 +222,7 @@ class TestConvertA2aRequestToAgentRunRequest:
     ]
     assert isinstance(result.run_config, RunConfig)
     assert result.run_config.custom_metadata == {
-        "a2a_metadata": {"test_key": "test_value"}
+        "a2a_metadata_test_key": "test_value"
     }
 
     # Verify calls

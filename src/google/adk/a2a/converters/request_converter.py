@@ -99,7 +99,8 @@ def convert_a2a_request_to_agent_run_request(
 
   custom_metadata = {}
   if request.metadata:
-    custom_metadata[A2A_METADATA_KEY] = request.metadata
+    for key, value in request.metadata.items():
+      custom_metadata[f'a2a_metadata_{key}'] = str(value)
 
   output_parts = []
   for a2a_part in request.message.parts:
